@@ -8,12 +8,11 @@ import { usePomodoroContext } from '../context/pomodoro-context';
 import { formatTime } from '../lib/utils';
 import { SettingsDialog } from './settings-dialog';
 import { useSettings } from '../context/settings-context';
-import useLocalStorage from '../hooks/use-local-storage';
+import { useTodoContext } from '../context/todo-context';
 
 export function PomodoroTimer() {
-  const { phase, isRunning, timeLeft, completedCycles, start, pause, reset, switchPhase } = usePomodoroContext();
-  const [activeTodoId] = useLocalStorage<string | null>('@pomodoro-flow:active-todo-id', null);
-  const [todos] = useLocalStorage<any[]>('@pomodoro-flow:todos', []);
+  const { phase, isRunning, timeLeft, completedCycles, start, pause, reset, switchPhase, } = usePomodoroContext();
+  const { todos, activeTodoId } = useTodoContext();
   const [activeTask, setActiveTask] = useState<string | null>(null);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -24,23 +23,8 @@ export function PomodoroTimer() {
   useEffect(() => {
     if (!isMounted) return;
 
-    const updateActiveTask = () => {
-      if (activeTodoId) {
-        const todo = todos.find((t: any) => t.id === activeTodoId);
-        setActiveTask(todo?.task || null);
-      } else {
-        setActiveTask(null);
-      }
-    };
-
-    updateActiveTask();
-    window.addEventListener('storage', updateActiveTask);
-    window.addEventListener('todo-updated', updateActiveTask);
-
-    return () => {
-      window.removeEventListener('storage', updateActiveTask);
-      window.removeEventListener('todo-updated', updateActiveTask);
-    };
+    const todo = todos.find((t: any) => t.id === activeTodoId);
+    setActiveTask(todo?.task || null);
   }, [activeTodoId, todos, isMounted]);
 
   const { settings } = useSettings();

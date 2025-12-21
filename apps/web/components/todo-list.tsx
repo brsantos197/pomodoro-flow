@@ -11,7 +11,7 @@ import { Checkbox } from '@workspace/ui/components/checkbox';
 import { Trash2, Plus, CheckCircle2, Circle, PlayCircle, Timer, Edit3 } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem } from '@workspace/ui/components/form';
 import { Badge } from '@workspace/ui/components/badge';
-import useLocalStorage from '../hooks/use-local-storage';
+import { useTodoContext } from '../context/todo-context';
 
 const todoSchema = z.object({
   task: z.string().min(1, 'Digite uma tarefa'),
@@ -28,8 +28,7 @@ interface Todo {
 }
 
 export function TodoList() {
-  const [todos, setTodos] = useLocalStorage<Todo[]>('@pomodoro-flow:todos', []);
-  const [activeTodoId, setActiveTodoId] = useLocalStorage<string | null>('@pomodoro-flow:active-todo-id', null);
+  const { todos, addTodo, toggleTodo: ctxToggleTodo, deleteTodo: ctxDeleteTodo, editTodo: ctxEditTodo, activeTodoId, setActiveTodoId } = useTodoContext();
   const [isMounted, setIsMounted] = useState(false);
 
   // Editing state
@@ -49,25 +48,7 @@ export function TodoList() {
     el?.select();
   }, [editTodoId]);
 
-  // Listen for updates from pomodoro timer
-  useEffect(() => {
-    if (!isMounted) return;
-
-    const handleTodoUpdate = () => {
-      // Force re-render by reading from localStorage
-      const saved = localStorage.getItem('@pomodoro-flow:todos');
-      if (saved) {
-        try {
-          setTodos(JSON.parse(saved));
-        } catch (error) {
-          console.error('Error loading todos:', error);
-        }
-      }
-    };
-
-    window.addEventListener('todo-updated', handleTodoUpdate);
-    return () => window.removeEventListener('todo-updated', handleTodoUpdate);
-  }, [setTodos, isMounted]);
+  // Context handles updates; no storage listener needed here
 
   const form = useForm<TodoFormData>({
     resolver: zodResolver(todoSchema),
@@ -84,25 +65,20 @@ export function TodoList() {
       createdAt: Date.now(),
       cycles: 0,
     };
-    setTodos([newTodo, ...todos]);
+    addTodo(data.task);
     form.reset();
   };
 
   const toggleTodo = (id: string) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    ));
+    ctxToggleTodo(id);
   };
 
   const deleteTodo = (id: string) => {
-    if (activeTodoId === id) {
-      setActiveTodoId(null);
-    }
     if (editTodoId === id) {
       setEditTodoId(null);
       setEditText('');
     }
-    setTodos(todos.filter(todo => todo.id !== id));
+    ctxDeleteTodo(id);
   };
 
   const startEditing = (todo: Todo) => {
@@ -110,7 +86,7 @@ export function TodoList() {
     if (editTodoId && editTodoId !== todo.id) {
       const trimmed = editText.trim();
       if (trimmed.length > 0) {
-        setTodos(todos.map(t => t.id === editTodoId ? { ...t, task: trimmed } : t));
+        ctxEditTodo(editTodoId, trimmed);
       }
     }
     setEditTodoId(todo.id);
@@ -125,7 +101,7 @@ export function TodoList() {
   const saveEdit = (id: string) => {
     const trimmed = editText.trim();
     if (trimmed.length === 0) return;
-    setTodos(todos.map(t => t.id === id ? { ...t, task: trimmed } : t));
+    ctxEditTodo(id, trimmed);
     setEditTodoId(null);
     setEditText('');
   };
