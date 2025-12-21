@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@work
 import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { Checkbox } from '@workspace/ui/components/checkbox';
-import { Trash2, Plus, CheckCircle2, Circle, PlayCircle, Timer } from 'lucide-react';
+import { Trash2, Plus, CheckCircle2, Circle, PlayCircle, Timer, Edit3 } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem } from '@workspace/ui/components/form';
 import { Badge } from '@workspace/ui/components/badge';
 import useLocalStorage from '../hooks/use-local-storage';
@@ -32,10 +32,22 @@ export function TodoList() {
   const [activeTodoId, setActiveTodoId] = useLocalStorage<string | null>('@pomodoro-flow:active-todo-id', null);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Editing state
+  const [editTodoId, setEditTodoId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+
   // Ensure client hydration happens correctly
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  // Focus the edit input when entering edit mode
+  useEffect(() => {
+    if (!editTodoId) return;
+    const el = document.getElementById(`edit-${editTodoId}`) as HTMLInputElement | null;
+    el?.focus();
+    el?.select();
+  }, [editTodoId]);
 
   // Listen for updates from pomodoro timer
   useEffect(() => {
@@ -86,7 +98,36 @@ export function TodoList() {
     if (activeTodoId === id) {
       setActiveTodoId(null);
     }
+    if (editTodoId === id) {
+      setEditTodoId(null);
+      setEditText('');
+    }
     setTodos(todos.filter(todo => todo.id !== id));
+  };
+
+  const startEditing = (todo: Todo) => {
+    // If there's an active edit on another todo, try to persist it first.
+    if (editTodoId && editTodoId !== todo.id) {
+      const trimmed = editText.trim();
+      if (trimmed.length > 0) {
+        setTodos(todos.map(t => t.id === editTodoId ? { ...t, task: trimmed } : t));
+      }
+    }
+    setEditTodoId(todo.id);
+    setEditText(todo.task);
+  };
+
+  const cancelEditing = () => {
+    setEditTodoId(null);
+    setEditText('');
+  };
+
+  const saveEdit = (id: string) => {
+    const trimmed = editText.trim();
+    if (trimmed.length === 0) return;
+    setTodos(todos.map(t => t.id === id ? { ...t, task: trimmed } : t));
+    setEditTodoId(null);
+    setEditText('');
   };
 
   const setActiveTodo = (id: string) => {
@@ -166,14 +207,39 @@ export function TodoList() {
                     onCheckedChange={() => toggleTodo(todo.id)}
                     className="flex-shrink-0"
                   />
-                  <span
-                    className={`flex-1 ${todo.completed
-                      ? 'line-through text-muted-foreground'
-                      : 'text-foreground'
-                      }`}
-                  >
-                    {todo.task}
-                  </span>
+                  {editTodoId === todo.id ? (
+                    <form
+                      onSubmit={(e) => { e.preventDefault(); saveEdit(todo.id); }}
+                      className="flex-1"
+                    >
+                      <Input
+                        id={`edit-${todo.id}`}
+                        value={editText}
+                        onChange={(e: any) => setEditText(e.target.value)}
+                        onKeyDown={(e: any) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            saveEdit(todo.id);
+                          }
+                          if (e.key === 'Escape') {
+                            cancelEditing();
+                          }
+                        }}
+                        onBlur={() => saveEdit(todo.id)}
+                        className="w-full"
+                      />
+                    </form>
+                  ) : (
+                    <span
+                      className={`flex-1 ${todo.completed
+                        ? 'line-through text-muted-foreground'
+                        : 'text-foreground'
+                        }`}
+                      onDoubleClick={() => startEditing(todo)}
+                    >
+                      {todo.task}
+                    </span>
+                  )}
 
                   {/* Cycles Badge */}
                   <Badge variant={isActive ? "default" : "secondary"} className="flex-shrink-0">
@@ -190,6 +256,17 @@ export function TodoList() {
                     title={isActive ? "Tarefa ativa" : "Ativar tarefa"}
                   >
                     <PlayCircle className="w-4 h-4" />
+                  </Button>
+
+                  {/* Edit Button */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => startEditing(todo)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                    title="Editar tarefa"
+                  >
+                    <Edit3 className="w-4 h-4" />
                   </Button>
 
                   {/* Delete Button */}
