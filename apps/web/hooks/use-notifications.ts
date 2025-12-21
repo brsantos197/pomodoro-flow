@@ -64,7 +64,7 @@ export function useNotifications(): UseNotificationsReturn {
       if (currentPermission === 'granted') {
         try {
           const notification = new Notification(title, {
-            icon: '/logo.png',
+            icon: '/images/logo.png',
             ...options,
           });
 
