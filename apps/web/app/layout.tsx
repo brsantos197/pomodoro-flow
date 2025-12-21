@@ -13,6 +13,11 @@ const fontMono = Geist_Mono({
   variable: "--font-mono",
 })
 
+export const metadata = {
+  title: "Pomodoro Flow",
+  description: "Aumente sua produtividade com o Pomodoro Flow",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

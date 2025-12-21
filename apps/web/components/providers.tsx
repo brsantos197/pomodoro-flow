@@ -2,17 +2,28 @@
 
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider } from "next-themes"
+import { SettingsProvider } from "../context/settings-context"
+import { PomodoroProvider } from "../context/pomodoro-context"
+import { ChallengeProvider } from "../context/challenge-context"
+import { NotificationPermissionDialog } from "./notification-permission-dialog"
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      enableColorScheme
-    >
-      {children}
-    </NextThemesProvider>
+    <SettingsProvider>
+      <PomodoroProvider>
+        <ChallengeProvider>
+          <NextThemesProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            enableColorScheme
+          >
+            <NotificationPermissionDialog />
+            {children}
+          </NextThemesProvider>
+        </ChallengeProvider>
+      </PomodoroProvider>
+    </SettingsProvider>
   )
 }
